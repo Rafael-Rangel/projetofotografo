@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# Atualiza pacotes e instala dependências do dlib
-apt-get update && apt-get install -y \
+echo "Atualizando pacotes e instalando dependências do dlib..."
+
+# Atualiza pacotes
+apt-get update && apt-get upgrade -y
+
+# Instala dependências do dlib
+apt-get install -y \
     cmake \
     build-essential \
     libopenblas-dev \
@@ -9,8 +14,6 @@ apt-get update && apt-get install -y \
     libx11-dev \
     libgtk-3-dev \
     libboost-python-dev \
-    libboost-all-dev \
-    python3-pybind11 \
-    python3-dev
+    libboost-thread-dev
 
-echo "Dependências instaladas com sucesso."
+echo "Dependências instaladas com sucesso!"
