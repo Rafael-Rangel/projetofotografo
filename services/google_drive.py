@@ -1,8 +1,9 @@
 import os
+import base64
+import logging
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from dotenv import load_dotenv
-import logging
 
 # Configuração de logs
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -12,15 +13,41 @@ load_dotenv()
 
 # Configuração do Google Drive
 SCOPES = ['https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_CREDENTIALS_PATH")
-MAIN_FOLDER_ID = os.getenv("MAIN_FOLDER_ID")
+
+# Variável de ambiente com a credencial base64
+GOOGLE_CREDENTIALS_BASE64 = os.getenv("GOOGLE_CREDENTIALS_BASE64")
+GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH")
+
+# Criar credenciais temporárias se necessário
+if GOOGLE_CREDENTIALS_BASE64:
+    try:
+        credentials_json = base64.b64decode(GOOGLE_CREDENTIALS_BASE64).decode("utf-8")
+
+        # Definir o caminho temporário para armazenar as credenciais
+        temp_credentials_path = "/tmp/credentials.json"  # Para Linux/Render
+        if os.name == "nt":  # Se for Windows
+            temp_credentials_path = os.path.join(os.getenv("TEMP"), "credentials.json")
+
+        # Salvar credenciais no arquivo temporário
+        with open(temp_credentials_path, "w") as f:
+            f.write(credentials_json)
+
+        # Atualizar variável de ambiente para apontar para o novo arquivo
+        os.environ["GOOGLE_CREDENTIALS_PATH"] = temp_credentials_path
+        GOOGLE_CREDENTIALS_PATH = temp_credentials_path
+        logging.info("Credenciais do Google Drive decodificadas e salvas com sucesso.")
+
+    except Exception as e:
+        logging.error(f"Erro ao decodificar credenciais Base64: {e}")
+        raise RuntimeError("Falha ao carregar as credenciais do Google Drive. Verifique a variável GOOGLE_CREDENTIALS_BASE64.")
+
+# Verificar se a variável `GOOGLE_CREDENTIALS_PATH` está definida corretamente
+if not GOOGLE_CREDENTIALS_PATH:
+    raise ValueError("Variável de ambiente 'GOOGLE_CREDENTIALS_PATH' não definida.")
 
 # Conectar ao Google Drive
 try:
-    if not SERVICE_ACCOUNT_FILE:
-        raise ValueError("Variável de ambiente 'GOOGLE_CREDENTIALS_PATH' não definida.")
-
-    creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    creds = service_account.Credentials.from_service_account_file(GOOGLE_CREDENTIALS_PATH, scopes=SCOPES)
     service = build('drive', 'v3', credentials=creds)
     logging.info("Conexão com Google Drive estabelecida com sucesso.")
 except Exception as e:

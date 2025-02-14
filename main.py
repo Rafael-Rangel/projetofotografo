@@ -2,6 +2,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from routers import albums, images
 import shutil
 import cv2
+import base64
 import numpy as np
 import os
 import requests
@@ -10,6 +11,26 @@ from services.face_recognition import extract_embeddings
 from services.google_drive import get_folder_id, list_images_in_folder, MAIN_FOLDER_ID
 
 app = FastAPI()
+
+
+
+# Verifica se a variável de ambiente existe
+if os.getenv("GOOGLE_CREDENTIALS_BASE64"):
+    credentials_json = base64.b64decode(os.getenv("GOOGLE_CREDENTIALS_BASE64")).decode("utf-8")
+
+    # Define o caminho temporário para armazenar o arquivo de credenciais
+    temp_credentials_path = "/tmp/credentials.json"  # Para Linux/Render
+    if os.name == "nt":  # Se for Windows
+        temp_credentials_path = os.path.join(os.getenv("TEMP"), "credentials.json")
+
+    # Salvar as credenciais no arquivo temporário
+    with open(temp_credentials_path, "w") as f:
+        f.write(credentials_json)
+
+    # Atualizar variável de ambiente para apontar para o novo arquivo
+    os.environ["GOOGLE_CREDENTIALS_PATH"] = temp_credentials_path
+
+
 
 # Registrar os módulos de rotas
 app.include_router(albums.router, prefix="/api", tags=["Albums"])
@@ -104,3 +125,4 @@ async def upload_selfie(file: UploadFile = File(...), event: str = "Casamento", 
     except Exception as e:
         logging.error(f"Erro no processamento da selfie: {e}")
         return {"error": str(e)}
+
