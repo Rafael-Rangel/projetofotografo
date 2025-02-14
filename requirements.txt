@@ -1,3 +1,4 @@
+dlib-bin
 cmake
 boost
 numpy
