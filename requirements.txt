@@ -30,4 +30,3 @@ scipy
 
 # 📌 Manipulação de Logs para Debug
 logging
-base64
