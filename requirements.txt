@@ -22,8 +22,7 @@ python-dotenv
 # 📌 Cálculo de Distância para Comparação de Rostos
 scipy
 
-# 📌 Manipulação de Arquivos
-shutil
+
 
 # 📌 Manipulação de Logs para Debug
 logging
