@@ -1,0 +1,11 @@
+2025-02-05 20:59:54,711 - ERROR - Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+2025-02-05 21:12:13,856 - ERROR - Erro ao processar imagem: 400: Nenhum rosto detectado na imagem.
+2025-02-05 21:13:44,370 - ERROR - Erro ao processar imagem: 400: Nenhum rosto detectado na imagem.
+2025-02-05 21:14:50,773 - ERROR - Erro ao processar imagem: 400: Nenhum rosto detectado na imagem.
+2025-02-05 21:17:49,089 - ERROR - Erro ao processar imagem: 400: Nenhum rosto detectado na imagem.
+2025-02-05 21:22:30,086 - INFO - Selfie processada com sucesso: IMG_3512.png
+2025-02-05 21:34:23,158 - INFO - Selfie processada com sucesso: IMG_3512.png

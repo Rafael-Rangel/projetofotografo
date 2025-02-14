@@ -1,0 +1,29 @@
+# 📌 Framework Web
+fastapi
+uvicorn
+
+# 📌 Processamento de Imagens e Reconhecimento Facial
+opencv-python
+numpy
+dlib
+
+# 📌 Busca Rápida de Imagens com FAISS
+faiss-cpu
+
+# 📌 Integração com Google Drive
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+
+# 📌 Manipulação de Variáveis de Ambiente
+python-dotenv
+
+# 📌 Cálculo de Distância para Comparação de Rostos
+scipy
+
+# 📌 Manipulação de Arquivos
+shutil
+
+# 📌 Manipulação de Logs para Debug
+logging
