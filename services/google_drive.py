@@ -1,6 +1,7 @@
 import os
 import base64
 import logging
+import requests
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from dotenv import load_dotenv
@@ -8,42 +9,44 @@ from dotenv import load_dotenv
 # Configuração de logs
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Carregar variáveis do .env
+# Carregar variáveis do ambiente
 load_dotenv()
+
+# Diretórios de armazenamento
+STORAGE_DIR = "storage"
+MODEL_DIR = "services"
+
+# Criar diretórios se não existirem
+os.makedirs(STORAGE_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)
 
 # Configuração do Google Drive
 SCOPES = ['https://www.googleapis.com/auth/drive']
-
-# Variável de ambiente com a credencial base64
 GOOGLE_CREDENTIALS_BASE64 = os.getenv("GOOGLE_CREDENTIALS_BASE64")
 GOOGLE_CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH")
+
+# Definir a pasta principal fixa dentro do Google Drive
+FOLDER_NAME = "Fotografia_Eventos"
 
 # Criar credenciais temporárias se necessário
 if GOOGLE_CREDENTIALS_BASE64:
     try:
         credentials_json = base64.b64decode(GOOGLE_CREDENTIALS_BASE64).decode("utf-8")
+        temp_credentials_path = "/tmp/credentials.json" if os.name != "nt" else os.path.join(os.getenv("TEMP"), "credentials.json")
 
-        # Definir o caminho temporário para armazenar as credenciais
-        temp_credentials_path = "/tmp/credentials.json"  # Para Linux/Render
-        if os.name == "nt":  # Se for Windows
-            temp_credentials_path = os.path.join(os.getenv("TEMP"), "credentials.json")
-
-        # Salvar credenciais no arquivo temporário
         with open(temp_credentials_path, "w") as f:
             f.write(credentials_json)
 
-        # Atualizar variável de ambiente para apontar para o novo arquivo
         os.environ["GOOGLE_CREDENTIALS_PATH"] = temp_credentials_path
         GOOGLE_CREDENTIALS_PATH = temp_credentials_path
-        logging.info("Credenciais do Google Drive decodificadas e salvas com sucesso.")
+        logging.info("Credenciais do Google Drive carregadas com sucesso.")
 
     except Exception as e:
         logging.error(f"Erro ao decodificar credenciais Base64: {e}")
-        raise RuntimeError("Falha ao carregar as credenciais do Google Drive. Verifique a variável GOOGLE_CREDENTIALS_BASE64.")
+        raise RuntimeError("Falha ao carregar as credenciais do Google Drive.")
 
-# Verificar se a variável `GOOGLE_CREDENTIALS_PATH` está definida corretamente
 if not GOOGLE_CREDENTIALS_PATH:
-    raise ValueError("Variável de ambiente 'GOOGLE_CREDENTIALS_PATH' não definida.")
+    raise ValueError("A variável de ambiente 'GOOGLE_CREDENTIALS_PATH' não está definida.")
 
 # Conectar ao Google Drive
 try:
@@ -54,23 +57,23 @@ except Exception as e:
     logging.error(f"Erro ao conectar com Google Drive: {e}")
     raise RuntimeError("Falha na autenticação do Google Drive. Verifique as credenciais.")
 
-# Cache para reduzir chamadas repetidas à API do Google Drive
+# Cache para evitar chamadas repetitivas ao Google Drive
 folder_cache = {}
 image_cache = {}
 
-def get_folder_id(name, parent_id):
+def get_folder_id(name, parent_id=None):
     """ Retorna o ID de uma pasta pelo nome dentro do Google Drive """
     try:
-        if (name, parent_id) in folder_cache:
-            return folder_cache[(name, parent_id)]
+        if parent_id:
+            query = f"name='{name}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '{parent_id}' in parents"
+        else:
+            query = f"name='{name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
 
-        query = f"name='{name}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '{parent_id}' in parents"
         results = service.files().list(q=query, fields="files(id, name)").execute()
         folders = results.get('files', [])
 
         if folders:
             folder_id = folders[0]['id']
-            folder_cache[(name, parent_id)] = folder_id  # Armazena no cache
             logging.info(f"Pasta encontrada: {name} (ID: {folder_id})")
             return folder_id
         else:
@@ -80,8 +83,25 @@ def get_folder_id(name, parent_id):
         logging.error(f"Erro ao buscar pasta '{name}': {e}")
         return None
 
+def list_subfolders():
+    """ Lista todas as subpastas dentro da pasta principal fixa """
+    try:
+        parent_id = get_folder_id(FOLDER_NAME)  # Pegamos o ID da pasta principal fixa
+        if not parent_id:
+            return {"error": f"Pasta principal '{FOLDER_NAME}' não encontrada no Google Drive."}
+
+        query = f"mimeType='application/vnd.google-apps.folder' and trashed=false and '{parent_id}' in parents"
+        results = service.files().list(q=query, fields="files(id, name)").execute()
+        subfolders = results.get("files", [])
+
+        logging.info(f"{len(subfolders)} subpastas encontradas dentro de '{FOLDER_NAME}'.")
+        return [{"id": folder["id"], "name": folder["name"]} for folder in subfolders]
+    except Exception as e:
+        logging.error(f"Erro ao listar subpastas: {e}")
+        return []
+
 def list_images_in_folder(folder_id):
-    """ Lista todas as imagens dentro de uma pasta no Google Drive """
+    """ Lista todas as imagens dentro de uma subpasta no Google Drive """
     try:
         if folder_id in image_cache:
             return image_cache[folder_id]
@@ -97,16 +117,28 @@ def list_images_in_folder(folder_id):
         logging.error(f"Erro ao listar imagens na pasta {folder_id}: {e}")
         return []
 
-def list_folders():
-    """ Retorna todas as pastas dentro do Google Drive """
+def find_matching_images(folder_id, user_embedding, threshold=0.6):
+    """ Compara os embeddings do usuário com as imagens na pasta e retorna as compatíveis """
     try:
-        results = service.files().list(
-            q="mimeType='application/vnd.google-apps.folder' and trashed=false",
-            fields="files(id, name)"
-        ).execute()
-        folders = results.get("files", [])
-        logging.info(f"{len(folders)} pastas encontradas no Google Drive.")
-        return folders
+        images = list_images_in_folder(folder_id)
+        matched_images = []
+
+        for img in images:
+            img_url = img["webContentLink"]
+            img_response = requests.get(img_url)
+            if img_response.status_code == 200:
+                img_array = bytearray(img_response.content)
+                
+                # Aqui você precisa chamar a função extract_embeddings para extrair os embeddings da imagem
+                img_embedding = extract_embeddings(img_array)
+                if img_embedding.size > 0:
+                    similarity = np.dot(user_embedding, img_embedding)
+                    if similarity > threshold:
+                        matched_images.append({"name": img["name"], "download_link": img_url})
+
+        logging.info(f"{len(matched_images)} imagens compatíveis encontradas.")
+        return matched_images
+
     except Exception as e:
-        logging.error(f"Erro ao listar pastas do Google Drive: {e}")
+        logging.error(f"Erro ao comparar imagens na pasta {folder_id}: {e}")
         return []

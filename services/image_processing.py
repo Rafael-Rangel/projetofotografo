@@ -1,9 +1,13 @@
 import cv2
 import imghdr
+import os
 import logging
 
 # Configuração de logs
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# Extensões de imagem suportadas
+VALID_FORMATS = {"jpeg", "png", "jpg", "bmp", "tiff"}
 
 def validate_image(image_path):
     """
@@ -16,12 +20,15 @@ def validate_image(image_path):
         bool: True se a imagem for válida, False caso contrário.
     """
     try:
-        # Verificar se o formato é suportado
-        valid_formats = {"jpeg", "png", "jpg"}
-        file_format = imghdr.what(image_path)
+        # Verificar se o arquivo existe
+        if not os.path.exists(image_path):
+            logging.warning(f"Arquivo não encontrado: {image_path}")
+            return False
 
-        if file_format not in valid_formats:
-            logging.warning(f"Formato de imagem inválido: {file_format}")
+        # Verificar se a extensão do arquivo é suportada
+        file_format = imghdr.what(image_path)
+        if file_format not in VALID_FORMATS:
+            logging.warning(f"Formato de imagem inválido ou não suportado: {file_format} ({image_path})")
             return False
 
         # Carregar a imagem com OpenCV
@@ -29,7 +36,7 @@ def validate_image(image_path):
 
         # Verificar se a imagem foi carregada corretamente
         if image is None or image.shape[0] == 0 or image.shape[1] == 0:
-            logging.warning("Imagem inválida ou corrompida.")
+            logging.warning(f"Imagem inválida ou corrompida: {image_path}")
             return False
 
         # Verificar número de canais (RGB ou Grayscale)
@@ -38,9 +45,9 @@ def validate_image(image_path):
         elif len(image.shape) == 2:  # Imagem grayscale válida
             return True
         else:
-            logging.warning("Imagem possui formato desconhecido.")
+            logging.warning(f"Imagem possui formato desconhecido: {image_path}")
             return False
 
     except Exception as e:
-        logging.error(f"Erro ao validar imagem: {e}")
+        logging.error(f"Erro ao validar imagem {image_path}: {e}")
         return False

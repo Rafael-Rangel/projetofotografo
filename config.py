@@ -1,6 +1,20 @@
 import os
 from pathlib import Path
 import logging
+import requests
+
+MODEL_URL = "https://example.com/shape_predictor_68_face_landmarks.dat"  # Substitua pela URL real
+MODEL_PATH = "services/shape_predictor_68_face_landmarks.dat"
+
+if not os.path.exists(MODEL_PATH):
+    print("Baixando modelo de reconhecimento facial...")
+    response = requests.get(MODEL_URL, stream=True)
+    with open(MODEL_PATH, "wb") as file:
+        for chunk in response.iter_content(chunk_size=8192):
+            file.write(chunk)
+    print("Download concluído.")
+
+
 
 # Definir caminho base do projeto (ajustável por variável de ambiente)
 BASE_DIR = Path(os.getenv("BASE_DIR", Path(__file__).resolve().parent))

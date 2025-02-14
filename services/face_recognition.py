@@ -24,7 +24,11 @@ except Exception as e:
     raise RuntimeError("Falha ao carregar os modelos de reconhecimento facial.")
 
 def extract_embeddings(image):
-    """ Extrai embeddings faciais de uma imagem """
+    """ 
+    Extrai embeddings faciais de uma imagem. 
+
+    Retorna uma lista com os embeddings de todos os rostos detectados.
+    """
     try:
         if image is None or image.shape[0] == 0 or image.shape[1] == 0:
             logging.warning("Imagem inválida ou corrompida.")
@@ -56,7 +60,11 @@ def cosine_similarity(embedding1, embedding2):
     return np.dot(embedding1, embedding2) / (np.linalg.norm(embedding1) * np.linalg.norm(embedding2))
 
 def compare_embeddings(embedding1, embedding2, threshold=0.6):
-    """ Compara embeddings usando distância euclidiana e similaridade cosseno """
+    """ 
+    Compara embeddings usando distância euclidiana e similaridade cosseno.
+
+    Retorna True se os embeddings forem semelhantes.
+    """
     try:
         if embedding1.size == 0 or embedding2.size == 0:
             logging.warning("Um dos embeddings está vazio!")
