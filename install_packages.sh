@@ -1,19 +1,17 @@
 #!/bin/bash
 
-echo "Atualizando pacotes e instalando dependências do dlib..."
-
-# Atualiza pacotes
+echo "🔧 Atualizando pacotes do sistema..."
 apt-get update && apt-get upgrade -y
 
-# Instala dependências do dlib
+echo "📦 Instalando dependências para dlib..."
 apt-get install -y \
     cmake \
     build-essential \
+    python3-dev \
     libopenblas-dev \
     liblapack-dev \
     libx11-dev \
     libgtk-3-dev \
-    libboost-python-dev \
-    libboost-thread-dev
+    libboost-all-dev
 
-echo "Dependências instaladas com sucesso!"
+echo "✅ Dependências instaladas com sucesso!"

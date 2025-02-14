@@ -1,4 +1,6 @@
-dlib-bin
+dlib==19.24.0 --no-binary dlib
+
+
 cmake
 boost
 numpy
